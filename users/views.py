@@ -1,13 +1,15 @@
 # IMPORTS
 import logging
 from functools import wraps
-
+from werkzeug.security import check_password_hash
 from flask import Blueprint, render_template, flash, redirect, url_for, request
-from flask_login import current_user
-
+from flask_login import current_user, login_user, logout_user
+from datetime import datetime
 from app import db
+from lottery.views import lottery
 from models import User
-from users.forms import RegisterForm
+import pyotp
+from users.forms import RegisterForm, LoginForm
 
 # CONFIG
 users_blueprint = Blueprint('users', __name__, template_folder='templates')
@@ -50,9 +52,35 @@ def register():
 
 
 # view user login
-@users_blueprint.route('/login')
+@users_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
-    return render_template('login.html')
+    form = LoginForm()
+
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.username.data).first()
+
+        if not user or not check_password_hash(user.password, form.password.data):
+            flash('Please check your login details and try again')
+
+            return render_template('login.html', form=form)
+        if pyotp.TOTP(user.pin_key).verify(form.pin.data):
+
+            login_user(user)
+
+            user.last_logged_in = user.current_logged_in
+            user.current_logged_in = datetime.now()
+            db.session.add(user)
+            db.session.commit()
+
+            return lottery()
+        if not pyotp.TOTP(user.pin_key).verify(form.pin.data):
+            flash('Wrong 2FA token', 'danger')
+    return render_template('login.html', form=form)
+
+@users_blueprint.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
 
 
 # view user profile
