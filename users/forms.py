@@ -28,3 +28,10 @@ class RegisterForm(FlaskForm):
         p = re.compile(r'(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*\W)')
         if not p.match(self.password.data):
             raise ValidationError("Password must contain at least 1 digit, 1 uppercase letter, 1 lowercase letter and one special character.")
+
+
+class LoginForm(FlaskForm):
+    username = StringField(validators=[Required(), Email()])
+    password = PasswordField(validators=[Required()])
+    pin = StringField(validators=[Required()])
+    submit = SubmitField()
