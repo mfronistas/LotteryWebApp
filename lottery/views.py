@@ -1,19 +1,26 @@
 # IMPORTS
+import copy
 import logging
 
 from flask import Blueprint, render_template, request, flash
+from sqlalchemy import desc
 
+from models import User, Draw
 from app import db
 from models import Draw
 
 # CONFIG
 lottery_blueprint = Blueprint('lottery', __name__, template_folder='templates')
 
+user = User.query.first()
+draw_key = user.draw_key
+
 
 # VIEWS
 # view lottery page
 @lottery_blueprint.route('/lottery')
 def lottery():
+
     return render_template('lottery.html')
 
 
@@ -25,7 +32,7 @@ def add_draw():
     submitted_draw.strip()
 
     # create a new draw with the form data.
-    new_draw = Draw(user_id=1, draw=submitted_draw, win=False, round=0)  # TODO: update user_id [user_id=1 is a placeholder]
+    new_draw = Draw(user_id=1, draw=submitted_draw, win=False, round=0, draw_key=draw_key)  # TODO: update user_id [user_id=1 is a placeholder]
 
     # add the new draw to the database
     db.session.add(new_draw)
@@ -41,11 +48,15 @@ def add_draw():
 def view_draws():
     # get all draws that have not been played [played=0]
     playable_draws = Draw.query.filter_by(played=False).all()  # TODO: filter playable draws for current user
-
+    draw_copies = list(map(lambda x: copy.deepcopy(x), playable_draws))
+    decrypted_draws = []
+    for p in draw_copies:
+        p.view_draw(draw_key)
+        decrypted_draws.append(p)
     # if playable draws exist
     if len(playable_draws) != 0:
         # re-render lottery page with playable draws
-        return render_template('lottery.html', playable_draws=playable_draws)
+        return render_template('lottery.html', playable_draws=decrypted_draws)
     else:
         flash('No playable draws.')
         return lottery()
