@@ -1,8 +1,25 @@
 # IMPORTS
 import socket
-from flask import Flask, render_template
-from flask_login import LoginManager
+from functools import wraps
+import logging
+from flask import Flask, render_template, request
+from flask_login import LoginManager, current_user
 from flask_sqlalchemy import SQLAlchemy
+
+# LOGGING
+class SecurityFilter(logging.Filter):
+    def filter(self, record):
+        return 'SECURITY' in record.getMessage()
+
+fh = logging.FileHandler('lottery.log', 'w')
+fh.setLevel(logging.WARNING)
+fh.addFilter(SecurityFilter())
+formatter = logging.Formatter('%(asctime)s : %(message)s', '%m/%d/%Y %I:%M:%S %p')
+fh.setFormatter(formatter)
+
+logger = logging.getLogger('')
+logger.propagate = False
+logger.addHandler(fh)
 
 # CONFIG
 app = Flask(__name__)
@@ -12,6 +29,23 @@ app.config['SECRET_KEY'] = 'LongAndRandomSecretKey'
 
 # initialise database
 db = SQLAlchemy(app)
+
+# FUNCTIONS
+def requires_roles(*roles):
+    def wrapper(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            if current_user.role not in roles:
+                logging.warning('SECURITY - Unauthorised access attempt [%s, %s, %s, %s]',
+                             current_user.id,
+                             current_user.email,
+                             current_user.role,
+                             request.remote_addr)
+                # Redirect to unauthorized notice
+                return render_template('403.html')
+            return f(*args, **kwargs)
+        return wrapped
+    return wrapper
 
 
 # HOME PAGE VIEW
