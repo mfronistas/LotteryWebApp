@@ -95,13 +95,15 @@ def login():
 
             return render_template('login.html', form=form)
 
+        # If user 2FA is valid
         if pyotp.TOTP(user.pin_key).verify(form.pin.data):
             # if user is verified reset login attempts
             session['logins'] = 0
 
             login_user(user)
-
+            # if user logs in, transfer the date and time to last logged in
             user.last_logged_in = user.current_logged_in
+            # Get current datetime for when the user logs in
             user.current_logged_in = datetime.now()
             db.session.add(user)
             db.session.commit()
@@ -115,6 +117,7 @@ def login():
             else:
                 return redirect(url_for('users.profile'))
 
+        # If user enters invalid 2FA code return error
         if not pyotp.TOTP(user.pin_key).verify(form.pin.data):
             flash('Wrong 2FA token', 'danger')
     return render_template('login.html', form=form)
@@ -125,7 +128,7 @@ def logout():
 
     # Security warning for when a user logs out
     logging.warning('SECURITY - Log out [%s,%s, %s]', current_user.id, current_user.email, request.remote_addr)
-
+    # User logs out and redirected to home page
     logout_user()
     return redirect(url_for('index'))
 
@@ -134,7 +137,7 @@ def logout():
 @users_blueprint.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html', name="PLACEHOLDER FOR FIRSTNAME")
+    return render_template('profile.html', name=current_user.firstname)
 
 
 # view user account
@@ -142,8 +145,8 @@ def profile():
 @login_required
 def account():
     return render_template('account.html',
-                           acc_no="PLACEHOLDER FOR USER ID",
-                           email="PLACEHOLDER FOR USER EMAIL",
-                           firstname="PLACEHOLDER FOR USER FIRSTNAME",
-                           lastname="PLACEHOLDER FOR USER LASTNAME",
-                           phone="PLACEHOLDER FOR USER PHONE")
+                           acc_no=current_user.id,
+                           email=current_user.email,
+                           firstname=current_user.firstname,
+                           lastname=current_user.lastname,
+                           phone=current_user.phone)
