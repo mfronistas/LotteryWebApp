@@ -1,3 +1,4 @@
+# IMPORTS
 from datetime import datetime
 from flask_login import UserMixin
 from app import db
@@ -8,14 +9,17 @@ from Crypto.Random import get_random_bytes
 from cryptography.fernet import Fernet
 
 
-
+# Function to encrypt data
 def encrypt(data, draw_key):
     return Fernet(draw_key).encrypt(bytes(data, 'utf-8'))
 
+
+# Function to decrypt data
 def decrypt(data, draw_key):
     return Fernet(draw_key).decrypt(data).decode('utf-8')
 
 
+# User class
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
 
@@ -43,6 +47,7 @@ class User(db.Model, UserMixin):
     # Define the relationship to Draw
     draws = db.relationship('Draw')
 
+    # User constructor
     def __init__(self, email, firstname, lastname, phone, password, pin_key, role):
         self.email = email
         self.firstname = firstname
@@ -51,7 +56,7 @@ class User(db.Model, UserMixin):
         # generating a password hash for every password in the database
         self.password = generate_password_hash(password)
         self.pin_key = pin_key
-        # Generating Decryption key
+        # Generating Encryption and Decryption key
         self.draw_key = base64.urlsafe_b64encode(scrypt(password, str(get_random_bytes(32)), 32, N=2 ** 14, r=8, p=1))
         self.role = role
         self.registered_on = datetime.now()
@@ -59,9 +64,11 @@ class User(db.Model, UserMixin):
         self.current_logged_in = None
 
 
+# Class Draw
 class Draw(db.Model):
     __tablename__ = 'draws'
 
+    # Draw information
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey(User.id), nullable=False)
     draw = db.Column(db.String(100), nullable=False)
@@ -70,6 +77,7 @@ class Draw(db.Model):
     win = db.Column(db.BOOLEAN, nullable=False)
     round = db.Column(db.Integer, nullable=False, default=0)
 
+    # Draw constructor
     def __init__(self, user_id, draw, win, round, draw_key):
         self.user_id = user_id
         self.draw = encrypt(draw, draw_key)
@@ -77,11 +85,12 @@ class Draw(db.Model):
         self.match = False
         self.win = win
         self.round = round
+
     # Function to decrypt draws
     def view_draw(self, draw_key):
         self.draw = decrypt(self.draw, draw_key)
 
-
+# Database initialization script, resetting the database with admin user added
 def init_db():
     db.drop_all()
     db.create_all()
@@ -95,5 +104,3 @@ def init_db():
 
     db.session.add(admin)
     db.session.commit()
-
-
