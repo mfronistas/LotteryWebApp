@@ -122,6 +122,8 @@ def run_lottery():
                 user = User.query.filter_by(id=draw.user_id).first()
 
                 # if user draw matches current unplayed winning draw, check with the decrypted copies of the draws
+                # When trying to use draw.view_draw(user.draw_key) getting a memory error
+                # so using decrypt function instead
                 if decrypt(draw.draw, user.draw_key) == decrypt(current_winning_draw_copy.draw, current_user.draw_key):
                     # add details of winner to list of results
                     results.append((current_winning_draw_copy.round, decrypt(draw.draw, user.draw_key),
