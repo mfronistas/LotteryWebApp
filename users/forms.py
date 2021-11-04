@@ -46,5 +46,5 @@ class LoginForm(FlaskForm):
     # Checks for valid email address format
     username = StringField(validators=[Required(), Email()])
     password = PasswordField(validators=[Required()])
-    pin = StringField(validators=[Required()])
+    pin = StringField(validators=[Required(), Length(min=6, max=6, message='Pin must be 6 digits long')])
     submit = SubmitField()
