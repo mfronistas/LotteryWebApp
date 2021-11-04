@@ -5,6 +5,7 @@ import logging
 from flask import Flask, render_template, request
 from flask_login import LoginManager, current_user
 from flask_sqlalchemy import SQLAlchemy
+from flask_talisman import Talisman
 
 # LOGGING
 class SecurityFilter(logging.Filter):
@@ -30,6 +31,19 @@ app.config['SECRET_KEY'] = 'LongAndRandomSecretKey'
 # initialise database
 db = SQLAlchemy(app)
 
+# Implementing security headers
+csp = {
+    ' default-scr': [
+        '\'self\'',
+        'https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.min.css'
+    ],
+    'script-src': [
+            '\'self\'',
+            '\'unsafe-inline\''
+    ]
+}
+talisman = Talisman(app, content_security_policy=csp)
+
 # FUNCTIONS
 def requires_roles(*roles):
     def wrapper(f):
@@ -51,6 +65,7 @@ def requires_roles(*roles):
 # HOME PAGE VIEW
 @app.route('/')
 def index():
+    print(request.headers)
     return render_template('index.html')
 
 
@@ -84,7 +99,7 @@ if __name__ == "__main__":
     free_socket.listen(5)
     free_port = free_socket.getsockname()[1]
     free_socket.close()
-
+    # Implementing login manager for page login
     login_manager = LoginManager()
     login_manager.login_view = 'users.login'
     login_manager.init_app(app)
@@ -106,4 +121,5 @@ if __name__ == "__main__":
     app.register_blueprint(admin_blueprint)
     app.register_blueprint(lottery_blueprint)
 
-    app.run(host=my_host, debug=True)
+    # Running app with ssl
+    app.run(host=my_host, debug=True, ssl_context=('cert.pem', 'key.pem'))
